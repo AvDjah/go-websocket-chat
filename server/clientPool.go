@@ -7,6 +7,7 @@ import (
 
 type clientPool struct {
 	id      uuid.UUID
+	name 	string
 	clients map[*client]bool
 }
 

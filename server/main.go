@@ -17,13 +17,13 @@ var pool_list = Hub_list{
 
 func main() {
 
-	http.HandleFunc("/", hello_world_handle)
 
 	//Dummy Default Room
 	pool_id := uuid.New()
 	dummy_pool := clientPool{
 		id:      pool_id,
 		clients: make(map[*client]bool),
+		name: "Defaul Pool",
 	}
 
 	pool_list.hub[pool_id] = &dummy_pool
@@ -48,6 +48,11 @@ func main() {
 		}
 		w.Write([]byte(new_uid.String()))
 	})
+
+
+	http.HandleFunc("/addpool",add_pool)
+
+	http.HandleFunc("/", hello_world_handle)
 
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {

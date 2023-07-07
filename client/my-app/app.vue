@@ -32,13 +32,11 @@
       <button @click="get_pool_list">Get All Pools</button>
       <br /> Pool List:
       <li class="pool-id-item" v-for="pool of pool_list.values()" @click="(event) => send_pool_id(event, pool)">
-        {{ pool }}
+        {{ pool.name }}
       </li>
     </div>
     <hr style="height: 10px;">
-    <div>
-      <button @click="add_hub">Add Random Hub</button>
-    </div>
+    <AddHub :refresh-pools="get_pool_list"></AddHub>
   </div>
 </template>
 
@@ -56,36 +54,30 @@ const message_from_websocket = ref([])
 const websocket_connected = ref(false)
 
 
-
 const send_pool_id = (event, id) => {
-  console.log(id)
+  console.log(id.pool_id)
   const resp = {
-    message: "",
-    pool_id: id
+    type: "POOL_ID_JOIN",
+    data: id.pool_id
   }
   webSocket.send(JSON.stringify(resp))
 }
 
-const add_hub = async () => {
-  const { data, error, refresh } = await useFetch("http://192.168.196.199:8080/addhub")
-  console.log("Added Hub ->" + data.value)
-  get_pool_list()
-}
 
 const get_pool_list = async (event) => {
-  const { data, error, refresh } = await useFetch("http://192.168.196.199:8080/sendpools")
+  const { data, error, refresh } = await useFetch("http://localhost:8080/sendpools")
   pool_list.value = data.value
-  console.log(message_from_websocket.value)
+  console.log(data.value)
 }
 
 onMounted(() => {
 
-  webSocket = new WebSocket("ws://192.168.196.199:8080/ws")
+  webSocket = new WebSocket("ws://localhost:8080/ws")
   console.log(webSocket)
   webSocket.onopen = async () => {
     websocket_connected.value = true
     console.log("Connected!!")
-    const { data, error, refresh } = await useFetch("http://192.168.196.199:8080/sendpools")
+    const { data, error, refresh } = await useFetch("http://localhost:8080/sendpools")
     pool_list.value = data.value
     console.log("Pool List Fetched")
   }
@@ -108,8 +100,8 @@ const is_green = (from) => {
 
 const send_message_to_websocket = (event) => {
   const resp = {
-    message: text.value,
-    pool_id: "",
+    type: "MESSAGE",
+    data: text.value
   }
   if (text.value === "") {
     return
