@@ -23,7 +23,7 @@ func main() {
 	dummy_pool := clientPool{
 		id:      pool_id,
 		clients: make(map[*client]bool),
-		name: "Defaul Pool",
+		name: "Default Pool",
 	}
 
 	pool_list.hub[pool_id] = &dummy_pool

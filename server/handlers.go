@@ -16,6 +16,10 @@ type client_message struct {
 	Data string `json:"data"`
 }
 
+type response_message struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
+}
 
 var upgrader = websocket.Upgrader{}
 
@@ -40,11 +44,13 @@ func handle_websocket_conn(conn *websocket.Conn, client *client) {
 
 		var pool_id_req client_message
 		json.Unmarshal(message, &pool_id_req)
+		var resp response_message
 
 		if pool_id_req.Type == "MESSAGE" {
-
+			resp.Type = "MESSAGE"
+			resp.Data = "No Pool Joined"
 			if client.client_pool == nil {
-				conn.WriteMessage(1, []byte("No Pool Joined"))
+				conn.WriteJSON(resp)
 				return
 			}
 
@@ -54,7 +60,23 @@ func handle_websocket_conn(conn *websocket.Conn, client *client) {
 
 		if(pool_id_req.Type == "POOL_ID_JOIN"){
 			fmt.Println("Request to Join Pool")
-			client.join_pool(pool_id_req.Data)
+			err := client.join_pool(pool_id_req.Data)
+
+			resp.Type = "POOL_ID_JOIN_RESULT"
+			if err != nil {
+				resp.Data = "-1"
+			} else {
+				uid,err := uuid.Parse(pool_id_req.Data)
+				if err != nil {
+					log.Fatal("UUID parse Error")
+				}
+				resp.Data = pool_list.hub[uid].name
+			}
+			err = conn.WriteJSON(resp)
+			// msg,err := json.Marshal(resp)
+			if err != nil {
+				log.Fatal("Marshalling Error")
+			}
 		}
 
 
@@ -90,7 +112,10 @@ func websocket_handle(w http.ResponseWriter, r *http.Request) {
 		client_pool: nil,
 	}
 
-	conn.WriteMessage(1, []byte("SEND_POOL_UUID"))
+	var resp response_message
+	resp.Type = "MESSAGE"
+	resp.Data = "SEND_POOL_UUID"
+	conn.WriteJSON(resp)
 	go handle_websocket_conn(conn, &client)
 }
 

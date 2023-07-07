@@ -1,39 +1,20 @@
 <template>
   <div>
+    <div class="text-3xl text-white font-bold bg-red-400 border-2 p-4 m-4">Socks 🧦</div>
+    <WebsocketStatus :reconnect-websocket="() => { connect_to_websocket() }">
+    </WebsocketStatus>
     <div>
       <input v-model="text" @submit="send_message_to_websocket">
     </div>
     <div>
       <button @click="send_message_to_websocket">Send To Websocket</button>
     </div>
-    <div v-if="websocket_connected.valueOf()" class="connecte1d">
-      Websocket is connect
-    </div>
-    <div v-else class="disconnected">
-      Disconnect : <button>Reconnect</button>
-    </div>
     <div>
-      Messages from client:
-      <div>
-        <div v-for="message of message_from_websocket.values()">
-          <div class="message">
-            <div style="width: 10px; height: 20px; border: 1px solid black; display: inline-block;"
-              :class="{ green: is_green(message.from), red: !is_green(message.from) }">
-            </div>
-            <div>
-              {{ message.message }}
-            </div>
-          </div>
-        </div>
-      </div>
+      <Messages></Messages>
     </div>
     <hr style="height: 10px;">
     <div>
-      <button @click="get_pool_list">Get All Pools</button>
-      <br /> Pool List:
-      <li class="pool-id-item" v-for="pool of pool_list.values()" @click="(event) => send_pool_id(event, pool)">
-        {{ pool.name }}
-      </li>
+      <PoolList :get-pools="get_pool_list" :send-pool-id="send_pool_id"></PoolList>
     </div>
     <hr style="height: 10px;">
     <AddHub :refresh-pools="get_pool_list"></AddHub>
@@ -47,12 +28,78 @@ let webSocket
 
 const text = ref("")
 
-const pool_list = ref([])
 
-const message_from_websocket = ref([])
+const pool_list = useState("pool_list", () => [])
+
+const websocket_status = useState("websocket_status", () => false)
+
+const message_from_websocket = useState("message_from_websocket", () => [])
 
 const websocket_connected = ref(false)
 
+const current_pool = useState("current_pool", () => null)
+
+
+
+const get_pool_list = async (event) => {
+  const { data, error, refresh } = await useFetch("http://localhost:8080/sendpools")
+  pool_list.value = data.value
+  console.log(data.value)
+}
+
+const connect_to_websocket = () => {
+  webSocket = new WebSocket("ws://localhost:8080/ws")
+  console.log(webSocket)
+
+
+  // WEBSOCKET IS CONNECTED
+  webSocket.onopen = async () => {
+    websocket_connected.value = true
+    console.log("Connected!!")
+    websocket_status.value = true
+    const { data, error, refresh } = await useFetch("http://localhost:8080/sendpools")
+    pool_list.value = data.value
+    console.log("Pool List Fetched")
+  }
+
+  // WEBSOCKET CLOSE DUE TO ERROR
+  webSocket.onerror = (err) => {
+    websocket_status.value = false
+    console.log("Websocket Error")
+    // webSocket.close()
+  }
+
+  // WEBSOCKET CLOSED SO RETRY
+  webSocket.onclose = () => {
+    websocket_status.value = false
+    console.log("Trying Again")
+    // setTimeout(connect_to_websocket, 1000)
+  }
+
+  // WEBSOCKET MESSAGE RECEIVED
+  webSocket.onmessage = (event) => {
+    console.log("Received: ", event.data)
+
+    const json = JSON.parse(event.data)
+    if (json.type === "POOL_ID_JOIN_RESULT") {
+      if (json.data !== "-1") {
+        current_pool.value = json.data
+      } else {
+        current_pool.value = "No Pool/ Pool Error"
+      }
+      return
+    }
+
+    message_from_websocket.value.push({
+      message: json.data,
+      from: 1
+    })
+  }
+}
+
+onMounted(() => {
+  connect_to_websocket()
+})
 
 const send_pool_id = (event, id) => {
   console.log(id.pool_id)
@@ -63,40 +110,6 @@ const send_pool_id = (event, id) => {
   webSocket.send(JSON.stringify(resp))
 }
 
-
-const get_pool_list = async (event) => {
-  const { data, error, refresh } = await useFetch("http://localhost:8080/sendpools")
-  pool_list.value = data.value
-  console.log(data.value)
-}
-
-onMounted(() => {
-
-  webSocket = new WebSocket("ws://localhost:8080/ws")
-  console.log(webSocket)
-  webSocket.onopen = async () => {
-    websocket_connected.value = true
-    console.log("Connected!!")
-    const { data, error, refresh } = await useFetch("http://localhost:8080/sendpools")
-    pool_list.value = data.value
-    console.log("Pool List Fetched")
-  }
-  webSocket.onerror = (err) => {
-    websocket_connected = false
-    console.log(err)
-  }
-  webSocket.onmessage = (event) => {
-    console.log("Received: ", event.data)
-    message_from_websocket.value.push({
-      message: event.data,
-      from: 1
-    })
-  }
-})
-
-const is_green = (from) => {
-  return from === 0
-}
 
 const send_message_to_websocket = (event) => {
   const resp = {
@@ -117,17 +130,7 @@ const send_message_to_websocket = (event) => {
 
 </script>
 
-<style>
-.green {
-  background-color: green;
-}
-
-span {
-  background-color: red;
-  width: 20px;
-  height: 20px;
-}
-
+<style scoped>
 input {
   border: 2px solid blue;
   padding: 10px;
@@ -173,14 +176,5 @@ hr {
 .pool-id-item:active {
   background-color: black;
   color: white;
-}
-
-.message {
-  display: flex;
-  margin: 0px;
-}
-
-.red {
-  background-color: red;
 }
 </style>

@@ -28,11 +28,11 @@ const props = defineProps({
 <template>
     <div>
         <div>
-            <button @click="add_hub">Add Random Hub</button>
+            <button class="bg-green-300 p-4 ring-2 ring-zinc-400 rounded-lg m-2" @click="add_hub">Add Random Hub</button>
             <br>
-            <div>
+            <div class="m-2 p-2">
                 <label for="pool_name">Enter Pool Name: </label>
-                <input name="pool_name" v-model="pool_name" />
+                <input class="ring-2 m-2" name="pool_name" v-model="pool_name" />
             </div>
         </div>
     </div>

@@ -17,6 +17,7 @@
     "tailwindcss": "^3.3.2"
   },
   "dependencies": {
+    "gsap": "^3.12.2",
     "peerjs": "^1.4.7"
   }
 }
